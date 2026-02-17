@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MedCam Triage</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1f4037, #99f2c8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            width: 420px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            text-align: center;
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: #1f4037;
+        }
+
+        p {
+            color: #555;
+            font-size: 14px;
+        }
+
+        input[type="file"] {
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.3s ease;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+
+        img {
+            margin-top: 15px;
+            max-width: 100%;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .low {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+</nav>
+
+<div class="container">
+    <h1>MedCam Triage</h1>
+    <p>AI-based Skin Lesion Pre-Screening with Compression</p>
+
+    <form id="uploadForm">
+        <input type="file" name="image" id="imageInput" required>
+        <br>
+        <button type="submit">Analyze</button>
+    </form>
+
+    <img id="previewImage">
+
+    <div id="resultBox" class="result"></div>
+</div>
+
+<script>
+const form = document.getElementById("uploadForm");
+const resultBox = document.getElementById("resultBox");
+const previewImage = document.getElementById("previewImage");
+const imageInput = document.getElementById("imageInput");
+
+imageInput.addEventListener("change", function () {
+    const file = this.files[0];
+    if (file) {
+        previewImage.src = URL.createObjectURL(file);
+        previewImage.style.display = "block";
+    }
+});
+
+form.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    if (!imageInput.files.length) {
+        alert("Please choose an image first!");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("image", imageInput.files[0]);
+
+    fetch("/predict", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        resultBox.style.display = "block";
+
+        let riskClass = data.risk === "HIGH RISK" ? "high" : "low";
+        resultBox.className = "result " + riskClass;
+
+        resultBox.innerHTML = `
+            <strong>Risk Level:</strong> ${data.risk}<br>
+            <strong>Prediction:</strong> ${data.raw_prediction}<br>
+            <strong>Compression Ratio:</strong> ${data.compression_ratio}<br>
+            <strong>Original Size:</strong> ${data.original_size_bytes} bytes<br>
+            <strong>Compressed Size:</strong> ${data.compressed_size_bytes} bytes
+        `;
+    })
+    .catch(error => {
+        resultBox.style.display = "block";
+        resultBox.className = "result high";
+        resultBox.innerHTML = "Error occurred while processing.";
+    });
+});
+</script>
+
